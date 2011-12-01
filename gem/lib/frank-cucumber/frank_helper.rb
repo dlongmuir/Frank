@@ -3,7 +3,7 @@ require 'json'
 
 module Frank module Cucumber
 
-module FrankHelper 
+module FrankHelper
 
   class << self
     # TODO: adding an ivar to the module itself is a big ugyl hack. We need a FrankDriver class, or similar
@@ -18,7 +18,7 @@ module FrankHelper
     raise "could not find anything matching [#{uiquery}] to touch" if views_touched.empty?
     #TODO raise warning if views_touched.count > 1
   end
-  
+
   def element_exists( query )
     matches = frankly_map( query, 'accessibilityLabel' )
     # TODO: raise warning if matches.count > 1
@@ -55,7 +55,7 @@ module FrankHelper
       :method_name => method_name,
       :arguments => method_args
     }
-    
+
     before = Time.now
     res = post_to_uispec_server( 'app_exec', :operation => operation_map )
 
@@ -68,8 +68,8 @@ module FrankHelper
 
     res['results']
   end
-  
-  
+
+
   def frankly_map( query, method_name, *method_args )
     operation_map = {
       :method_name => method_name,
@@ -147,7 +147,7 @@ module FrankHelper
       raise "ACCESSIBILITY DOES NOT APPEAR TO BE ENABLED ON YOUR SIMULATOR. Hit the home button, go to settings, select Accessibility, and turn the inspector on."
     end
   end
-  
+
   def frankly_ping
     get_to_uispec_server('')
     return true
@@ -187,7 +187,7 @@ module FrankHelper
 
     res.body
   end
-  
+
   def start_recording
     %x{osascript<<APPLESCRIPT
 	tell application "QuickTime Player"
@@ -195,7 +195,7 @@ module FrankHelper
 	  tell sr to start
 	end tell
   APPLESCRIPT}
-  
+
   end
 
   def stop_recording
@@ -204,9 +204,9 @@ module FrankHelper
 	  set sr to (document 1)
 	  tell sr to stop
 	end tell
-  APPLESCRIPT}  
+  APPLESCRIPT}
   end
-  
+
   def quit_simulator
     %x{osascript<<APPLESCRIPT-
       application "iPhone Simulator" quit
@@ -221,33 +221,43 @@ activate application "iPhone Simulator"
 tell application "System Events"
 	click menu item "#{menu_label}" of menu "Hardware" of menu bar of process "iPhone Simulator"
 end tell
-  APPLESCRIPT}  
+  APPLESCRIPT}
   end
-  
+
+  def simulator_hardware_menu_button( ascii_number )
+%x{osascript<<APPLESCRIPT
+activate application "iPhone Simulator"
+tell application "System Events" to keystroke (ASCII character #{ascii_number}) using command down
+  APPLESCRIPT}
+  end
+
+
   def press_home_on_simulator
     simulator_hardware_menu_press "Home"
   end
-  
+
   def rotate_simulator_left
-    simulator_hardware_menu_press "Rotate Left"
+    #    simulator_hardware_menu_press "Rotate Left"
+    simulator_hardware_menu_button 28
   end
 
   def rotate_simulator_right
-    simulator_hardware_menu_press "Rotate Right"
+    #    simulator_hardware_menu_press "Rotate Right"
+    simulator_hardware_menu_button 29
   end
 
   def shake_simulator
     simulator_hardware_menu_press "Shake Gesture"
   end
-  
+
   def simulate_memory_warning
     simulator_hardware_menu_press "Simulate Memory Warning"
   end
-  
+
   def toggle_call_status_bar
     simulator_hardware_menu_press "Toggle In-Call Status Bar"
   end
-  
+
   def simulate_hardware_keyboard
     simulator_hardware_menu_press "Simulate Hardware Keyboard"
   end
