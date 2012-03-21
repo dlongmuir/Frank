@@ -1,9 +1,12 @@
 require 'net/http'
 require 'json'
+require 'frank-cucumber/frank_localize'
 
 module Frank module Cucumber
 
-module FrankHelper
+module FrankHelper 
+  HOST = "localhost"
+  FRANK_PORT = 37265
 
   class << self
     # TODO: adding an ivar to the module itself is a big ugyl hack. We need a FrankDriver class, or similar
@@ -18,7 +21,7 @@ module FrankHelper
     raise "could not find anything matching [#{uiquery}] to touch" if views_touched.empty?
     #TODO raise warning if views_touched.count > 1
   end
-
+  
   def element_exists( query )
     matches = frankly_map( query, 'accessibilityLabel' )
     # TODO: raise warning if matches.count > 1
@@ -55,7 +58,7 @@ module FrankHelper
       :method_name => method_name,
       :arguments => method_args
     }
-
+    
     before = Time.now
     res = post_to_uispec_server( 'app_exec', :operation => operation_map )
 
@@ -69,13 +72,11 @@ module FrankHelper
     res['results']
   end
 
-
-  def frankly_map( query, method_name, *method_args )
+  def frankly_engine_map( selector_engine, query, method_name, *method_args )
     operation_map = {
       :method_name => method_name,
       :arguments => method_args,
     }
-    selector_engine = Frank::Cucumber::FrankHelper.selector_engine || 'uiquery' # default to UIQuery for backwards compatibility
     res = post_to_uispec_server( 'map', :query => query, :operation => operation_map, :selector_engine => selector_engine )
     res = JSON.parse( res )
     if res['outcome'] != 'SUCCESS'
@@ -84,10 +85,27 @@ module FrankHelper
 
     res['results']
   end
+  
+  def frankly_map( query, method_name, *method_args )
+    selector_engine = Frank::Cucumber::FrankHelper.selector_engine || 'uiquery' # default to UIQuery for backwards compatibility
+    frankly_engine_map( selector_engine, query, method_name, *method_args )
+  end
 
   def frankly_dump
     res = get_to_uispec_server( 'dump' )
     puts JSON.pretty_generate(JSON.parse(res)) rescue puts res #dumping a super-deep DOM causes errors
+  end
+
+  def frankly_screenshot(filename, subframe=nil, allwindows=true)
+    path = 'screenshot'
+    path += '/allwindows' if allwindows
+    path += "/frame/" + URI.escape(subframe) if (subframe != nil)
+
+    data = get_to_uispec_server( path )
+
+    open(filename, "wb") do |file|
+      file.write(data)
+    end
   end
 
   def frankly_oriented_portrait?
@@ -147,7 +165,7 @@ module FrankHelper
       raise "ACCESSIBILITY DOES NOT APPEAR TO BE ENABLED ON YOUR SIMULATOR. Hit the home button, go to settings, select Accessibility, and turn the inspector on."
     end
   end
-
+  
   def frankly_ping
     get_to_uispec_server('')
     return true
@@ -172,8 +190,10 @@ module FrankHelper
     make_http_request( url, req )
   end
 
-  def frank_url_for( verb )
-    url = URI.parse "http://localhost:37265/"
+  def frank_url_for( verb , port=nil )
+    port ||= FRANK_PORT
+    
+    url = URI.parse "http://#{HOST}:#{port}/"
     url.path = '/'+verb
     url
   end
@@ -187,7 +207,7 @@ module FrankHelper
 
     res.body
   end
-
+  
   def start_recording
     %x{osascript<<APPLESCRIPT
 	tell application "QuickTime Player"
@@ -195,7 +215,7 @@ module FrankHelper
 	  tell sr to start
 	end tell
   APPLESCRIPT}
-
+  
   end
 
   def stop_recording
@@ -204,14 +224,25 @@ module FrankHelper
 	  set sr to (document 1)
 	  tell sr to stop
 	end tell
-  APPLESCRIPT}
+  APPLESCRIPT}  
   end
-
+  
   def quit_simulator
     %x{osascript<<APPLESCRIPT-
       application "iPhone Simulator" quit
     APPLESCRIPT}
   end
+
+def simulator_reset_data
+  %x{osascript<<APPLESCRIPT
+activate application "iPhone Simulator"
+tell application "System Events"
+  click menu item 5 of menu 1 of menu bar item 2 of menu bar 1 of process "#{Localize.t(:iphone_simulator)}"
+  delay 0.5
+  click button 2 of window 1 of process "#{Localize.t(:iphone_simulator)}"
+end tell
+  APPLESCRIPT} 
+end
 
   #Note this needs to have "Enable access for assistive devices"
   #chcked in the Universal Access system preferences
@@ -219,47 +250,37 @@ module FrankHelper
     %x{osascript<<APPLESCRIPT
 activate application "iPhone Simulator"
 tell application "System Events"
-	click menu item "#{menu_label}" of menu "Hardware" of menu bar of process "iPhone Simulator"
+	click menu item "#{menu_label}" of menu "#{Localize.t(:hardware)}" of menu bar of process "#{Localize.t(:iphone_simulator)}"
 end tell
-  APPLESCRIPT}
+  APPLESCRIPT}  
   end
-
-  def simulator_hardware_menu_button( ascii_number )
-%x{osascript<<APPLESCRIPT
-activate application "iPhone Simulator"
-tell application "System Events" to keystroke (ASCII character #{ascii_number}) using command down
-  APPLESCRIPT}
-  end
-
-
+  
   def press_home_on_simulator
-    simulator_hardware_menu_press "Home"
+    simulator_hardware_menu_press Localize.t(:home)
   end
-
+  
   def rotate_simulator_left
-    #    simulator_hardware_menu_press "Rotate Left"
-    simulator_hardware_menu_button 28
+    simulator_hardware_menu_press Localize.t(:rotate_left)
   end
 
   def rotate_simulator_right
-    #    simulator_hardware_menu_press "Rotate Right"
-    simulator_hardware_menu_button 29
+    simulator_hardware_menu_press Localize.t(:rotate_right)
   end
 
   def shake_simulator
-    simulator_hardware_menu_press "Shake Gesture"
+    simulator_hardware_menu_press Localize.t(:shake_gesture)
   end
-
+  
   def simulate_memory_warning
-    simulator_hardware_menu_press "Simulate Memory Warning"
+    simulator_hardware_menu_press Localize.t(:simulate_memory_warning)
   end
-
+  
   def toggle_call_status_bar
-    simulator_hardware_menu_press "Toggle In-Call Status Bar"
+    simulator_hardware_menu_press Localize.t(:toggle_call_status_bar)
   end
-
+  
   def simulate_hardware_keyboard
-    simulator_hardware_menu_press "Simulate Hardware Keyboard"
+    simulator_hardware_menu_press Localize.t(:simulate_hardware_keyboard)
   end
 end
 

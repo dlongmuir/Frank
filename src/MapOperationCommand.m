@@ -8,6 +8,8 @@
 
 #import "MapOperationCommand.h"
 
+#import "ViewJSONSerializer.h"
+
 #import "SelectorEngineRegistry.h"
 #import "JSON.h"
 #import "Operation.h"
@@ -33,16 +35,13 @@
 }
 
 - (id) performOperation:(Operation *)operation onView:(UIView *)view {
-
-    NSString *className = NSStringFromClass([view class]); 
     
 	if( [operation appliesToObject:view] )
 		return [operation applyToObject:view];
 	
     UIQuery *wrappedView;
-    
-    
-    if ([className isEqualToString:@"UIWebView"])
+
+    if([view isKindOfClass:[UIWebView class]])
     {
         wrappedView = [UIQueryWebView withViews:[NSMutableArray
                                                  arrayWithObject:view]
@@ -67,6 +66,9 @@
 	NSDictionary *requestCommand = [requestBody JSONValue];
     
 	NSString *selectorEngineString = [requestCommand objectForKey:@"selector_engine"];
+    if( !selectorEngineString )
+        selectorEngineString = @"uiquery"; // default to UIQuery, for compatibility with old clients
+    
 	NSString *selector = [requestCommand objectForKey:@"query"];
 	NSDictionary *operationDict = [requestCommand objectForKey:@"operation"];
 	Operation *operation = [[[Operation alloc] initFromJsonRepresentation:operationDict] autorelease];
@@ -84,7 +86,7 @@
 	for (UIView *view in viewsToMap) {
 		@try {
 			id result = [self performOperation:operation onView:view];
-			[results addObject:[DumpCommand jsonify:result]];
+			[results addObject:[ViewJSONSerializer jsonify:result]];
 		}
 		@catch (NSException * e) {
 			NSLog( @"Exception while performing operation %@\n%@", operation, e );

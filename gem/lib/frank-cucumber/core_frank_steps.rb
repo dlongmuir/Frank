@@ -1,4 +1,4 @@
-WAIT_TIMEOUT = ENV['WAIT_TIMEOUT'] || 240
+WAIT_TIMEOUT = ENV['WAIT_TIMEOUT'].to_i || 240
 
 require 'rspec/expectations'
 
@@ -128,6 +128,20 @@ When /^I fill in text fields as follows:$/ do |table|
   table.hashes.each do |row|
     step %Q|I type "#{row['text']}" into the "#{row['field']}" text field|
   end
+end
+
+# simulate entering text from keyboard
+When /^I enter the text "([^\\"]*)" from keyboard to the textfield "([^\\"]*)"$/ do |text_to_type, text_field_mark| # !> ambiguous first argument; put parentheses or even spaces
+  selector = "view marked:'#{text_field_mark}' first"
+  if element_exists(selector)
+     touch( selector )
+  else
+     raise "Could not find [#{text_field_mark}], it does not exist."
+  end
+  text_field_selector =  "textField placeholder:'#{text_field_mark}'"
+  frankly_map( text_field_selector, 'becomeFirstResponder' )
+  frankly_map( text_field_selector, 'setText:', text_to_type )
+  frankly_map( text_field_selector, 'endEditing:', true )
 end
 
 # -- Rotate -- #
@@ -275,4 +289,8 @@ end
 
 When /^I quit the simulator/ do
   quit_simulator 
+end
+
+When /^I reset the simulator/ do
+  simulator_reset_data
 end

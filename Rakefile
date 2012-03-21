@@ -36,7 +36,17 @@ task :copy_bundle do
   cp_r 'frank_static_resources.bundle', 'dist'
 end
 
-task :default => [:clean, :prep_dist, :build_lib, :copy_bundle]
+task :build => [:clean, :prep_dist, :build_lib, :copy_bundle]
+task :default => :build
+
+desc "compile libShelley.a and copy it into dist"
+task :build_shelley do
+  sh 'cd lib/Shelley && rake build_lib'
+  sh 'cp lib/Shelley/build/libShelley.a dist/'
+end
+
+desc "build and copy everything into the gem directories for distribution as a gem"
+task :build_for_release => [:build, :build_shelley, :copy_dist_to_gem]
 
 desc "copies contents of dist dir to the frank-cucumber gem's frank-skeleton"
 task :copy_dist_to_gem do
